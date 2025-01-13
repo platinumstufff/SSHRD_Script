@@ -77,6 +77,7 @@ elif [ "$1" = 'reboot' ]; then
     echo "[*] Device should now reboot"
     exit
 elif [ "$1" = 'ssh' ]; then
+    echo "[*] Run mount_filesystems to mount filesystems"
     killall iproxy 2>/dev/null | true
     "$oscheck"/iproxy 2222 22 &>/dev/null &
     "$oscheck"/sshpass -p 'alpine' ssh -o StrictHostKeyChecking=no -p2222 root@localhost || true
@@ -197,6 +198,9 @@ if [ "$1" = 'boot' ]; then
     "$oscheck"/irecovery -c bootx
 
     echo "[*] Device should now show text on screen"
+    echo "[*] Run sudo ./sshrd.sh ssh to connect to SSH"
+    echo "[*] On Linux, run the following command in another terminal and keep it open:"
+    echo "    sudo systemctl stop usbmuxd; sudo usbmuxd -pf"
     exit
 fi
 
@@ -273,6 +277,8 @@ fi
 if [ "$oscheck" = 'Darwin' ]; then
     if [ "$major" -gt 16 ] || ([ "$major" -eq 16 ] && ([ "$minor" -gt 1 ] || [ "$minor" -eq 1 ] && [ "$patch" -ge 0 ])); then
     :
+    elif ([ "$major" -eq 10 ] && [ "$minor" -eq 3 ]) || ([ "$major" -eq 11 ] && [ "$minor" -lt 3 ]); then
+        hdiutil resize -size 105MB work/ramdisk.dmg
     else
         hdiutil resize -size 210MB work/ramdisk.dmg
     fi
@@ -292,7 +298,7 @@ if [ "$oscheck" = 'Darwin' ]; then
         "$oscheck"/gtar -x --no-overwrite-dir -f sshtars/t2ssh.tar.gz -C /tmp/SSHRD/
         echo "[!] WARNING: T2 MIGHT HANG AND DO NOTHING WHEN BOOTING THE RAMDISK!"
     else
-    if [ "$major" -lt 11 ] || ([ "$major" -eq 11 ] && ([ "$minor" -lt 4 ] || [ "$minor" -eq 4 ] && [ "$patch" -le 1 ])); then
+    if [ "$major" -lt 12 ]; then
         mkdir 12rd
         ipswurl12=$(curl -sL "https://api.ipsw.me/v4/device/$deviceid?type=ipsw" | "$oscheck"/jq '.firmwares | .[] | select(.version=="'12.0'")' | "$oscheck"/jq -s '.[0] | .url' --raw-output)
         cd 12rd
@@ -320,10 +326,11 @@ else
     if [ "$major" -gt 16 ] || ([ "$major" -eq 16 ] && ([ "$minor" -gt 1 ] || [ "$minor" -eq 1 ] && [ "$patch" -ge 0 ])); then
         echo "Sorry, 16.1 and above doesn't work on Linux at the moment!"
         exit
-        else
-        :
-        fi
-    "$oscheck"/hfsplus work/ramdisk.dmg grow 210000000 > /dev/null
+    elif ([ "$major" -eq 10 ] && [ "$minor" -eq 3 ]) || ([ "$major" -eq 11 ] && [ "$minor" -lt 3 ]); then
+        "$oscheck"/hfsplus work/ramdisk.dmg grow 105000000 > /dev/null
+    else
+        "$oscheck"/hfsplus work/ramdisk.dmg grow 210000000 > /dev/null
+    fi
 
     if [ "$replace" = 'j42dap' ]; then
         "$oscheck"/hfsplus work/ramdisk.dmg untar sshtars/atvssh.tar > /dev/null
@@ -331,7 +338,7 @@ else
         "$oscheck"/hfsplus work/ramdisk.dmg untar sshtars/t2ssh.tar > /dev/null
         echo "[!] WARNING: T2 MIGHT HANG AND DO NOTHING WHEN BOOTING THE RAMDISK!"
     else
-    if [ "$major" -lt 11 ] || ([ "$major" -eq 11 ] && ([ "$minor" -lt 4 ] || [ "$minor" -eq 4 ] && [ "$patch" -le 1 ])); then
+    if [ "$major" -lt 12 ]; then
         mkdir 12rd
         ipswurl12=$(curl -sL "https://api.ipsw.me/v4/device/$deviceid?type=ipsw" | "$oscheck"/jq '.firmwares | .[] | select(.version=="'12.0'")' | "$oscheck"/jq -s '.[0] | .url' --raw-output)
         cd 12rd
@@ -374,7 +381,7 @@ rm -rf work 12rd
  # echo "[*] Done uploading logs!"
 
 echo ""
-echo "[*] Finished! Please use ./sshrd.sh boot to boot your device"
+echo "[*] Finished! Please use sudo ./sshrd.sh boot to boot your device"
 echo $1 > sshramdisk/version.txt
 
  } | tee logs/"$(date +%T)"-"$(date +%F)"-"$(uname)"-"$(uname -r)".log
