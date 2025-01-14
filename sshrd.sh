@@ -79,9 +79,17 @@ elif [ "$1" = 'reboot' ]; then
 elif [ "$1" = 'ssh' ]; then
     echo "[*] Run mount_filesystems to mount filesystems"
     killall iproxy 2>/dev/null | true
+    if [ "$oscheck" = 'Linux' ]; then
+        sudo systemctl stop usbmuxd 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        sleep .1
+        sudo usbmuxd -pf 2>/dev/null &
+        sleep .1
+    fi
     "$oscheck"/iproxy 2222 22 &>/dev/null &
     "$oscheck"/sshpass -p 'alpine' ssh -o StrictHostKeyChecking=no -p2222 root@localhost || true
     killall iproxy 2>/dev/null | true
+    sudo killall usbmuxd 2>/dev/null | true
     exit
 elif [ "$oscheck" = 'Darwin' ]; then
     if ! (system_profiler SPUSBDataType 2> /dev/null | grep ' Apple Mobile Device (DFU Mode)' >> /dev/null); then
@@ -199,8 +207,6 @@ if [ "$1" = 'boot' ]; then
 
     echo "[*] Device should now show text on screen"
     echo "[*] Run sudo ./sshrd.sh ssh to connect to SSH"
-    echo "[*] On Linux, run the following command in another terminal and keep it open:"
-    echo "    sudo systemctl stop usbmuxd; sudo usbmuxd -pf"
     exit
 fi
 
