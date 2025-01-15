@@ -58,6 +58,13 @@ if [ "$1" = 'clean' ]; then
     echo "[*] Removed the current created SSH ramdisk"
     exit
 elif [ "$1" = 'dump-blobs' ]; then
+    if [ "$oscheck" = 'Linux' ]; then
+        sudo systemctl stop usbmuxd 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        sleep .1
+        sudo usbmuxd -pf 2>/dev/null &
+        sleep .1
+    fi
     "$oscheck"/iproxy 2222 22 &>/dev/null &
     version=$("$oscheck"/sshpass -p 'alpine' ssh -o StrictHostKeyChecking=no -p2222 root@localhost "sw_vers -productVersion")
     version=${version%%.*}
@@ -69,11 +76,21 @@ elif [ "$1" = 'dump-blobs' ]; then
     "$oscheck"/sshpass -p 'alpine' ssh -o StrictHostKeyChecking=no -p2222 root@localhost "cat /dev/$device" | dd of=dump.raw bs=256 count=$((0x4000))
     "$oscheck"/img4tool --convert -s dumped.shsh dump.raw
     killall iproxy 2>/dev/null | true
+    sudo killall usbmuxd 2>/dev/null | true
+    rm dump.raw
     echo "[*] Onboard blobs should have dumped to the dumped.shsh file"
     exit
 elif [ "$1" = 'reboot' ]; then
+    if [ "$oscheck" = 'Linux' ]; then
+        sudo systemctl stop usbmuxd 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        sleep .1
+        sudo usbmuxd -pf 2>/dev/null &
+        sleep .1
+    fi
     "$oscheck"/iproxy 2222 22 &>/dev/null &
     "$oscheck"/sshpass -p 'alpine' ssh -o StrictHostKeyChecking=no -p2222 root@localhost "/sbin/reboot"
+    sudo killall usbmuxd 2>/dev/null | true
     echo "[*] Device should now reboot"
     exit
 elif [ "$1" = 'ssh' ]; then
