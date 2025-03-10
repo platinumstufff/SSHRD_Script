@@ -15,4 +15,4 @@
   - A7 iOS 7 devices will be stuck in recovery loop after booting iOS 12 ramdisk, you may boot an iOS 8 ramdisk using [Legacy iOS Kit](https://github.com/LukeZGD/Legacy-iOS-Kit) to fix this, which is not supported by SSHRD_Script
 ## Notes
 - If there are permission denied or operation not permitted errors with sshrd.sh, try running sshrd.sh with sudo
-- On 10.2.1 and lower devices, use `mount_hfs /dev/disk0s1s1 /mnt1` to mount system partition and `mount_hfs /dev/disk0s1s2 /mnt2` to mount data partition, currently idk how to copy files from/to /mnt2 on these versions
+- On 10.2.1 and lower devices, use `mount_hfs /dev/disk0s1s1 /mnt1` to mount system partition then load sep `usr/libexec/seputil --load /mnt1/usr/ standalone/firmware/sep-firmware.img4`, and `mount_hfs /dev/disk0s1s2 /mnt2` to mount data partition. mnt2 will work if sep version is compatible with ios.
