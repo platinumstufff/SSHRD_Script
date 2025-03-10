@@ -16,7 +16,7 @@ patch=$(echo "$version" | cut -d. -f3)
 ERR_HANDLER () {
     [ $? -eq 0 ] && exit
     echo "[-] An error occurred"
-  #  rm -rf work 12rd | true
+    rm -rf work 12rd | true
     killall iproxy 2>/dev/null | true
 
     # echo "[-] Uploading logs. If this fails, it's not a big deal."
