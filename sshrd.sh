@@ -439,7 +439,7 @@ fi
 if [ "$oscheck" = 'Darwin' ]; then
     if [ "$major" -gt 16 ] || ([ "$major" -eq 16 ] && ([ "$minor" -gt 1 ] || [ "$minor" -eq 1 ] && [ "$patch" -ge 0 ])); then
     :
-    elif ([ "$major" -eq 10 ] && [ "$minor" -eq 3 ]) || ([ "$major" -eq 11 ] && [ "$minor" -lt 3 ]); then
+    elif ([ "$major" -lt 11 ]) || ([ "$major" -eq 11 ] && [ "$minor" -lt 3 ]); then
         hdiutil resize -size 105MB work/ramdisk.dmg
     else
         hdiutil resize -size 210MB work/ramdisk.dmg
@@ -488,7 +488,7 @@ else
     if [ "$major" -gt 16 ] || ([ "$major" -eq 16 ] && ([ "$minor" -gt 1 ] || [ "$minor" -eq 1 ] && [ "$patch" -ge 0 ])); then
         echo "Sorry, 16.1 and above doesn't work on Linux at the moment!"
         exit
-    elif ([ "$major" -eq 10 ] && [ "$minor" -eq 3 ]) || ([ "$major" -eq 11 ] && [ "$minor" -lt 3 ]); then
+    elif ([ "$major" -lt 11 ]) || ([ "$major" -eq 11 ] && [ "$minor" -lt 3 ]); then
         "$oscheck"/hfsplus work/ramdisk.dmg grow 105000000 > /dev/null
     else
         "$oscheck"/hfsplus work/ramdisk.dmg grow 210000000 > /dev/null
