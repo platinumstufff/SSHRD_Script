@@ -2,8 +2,7 @@
 - [Nathan verygenericname's SSHRD_Script](https://github.com/verygenericname/SSHRD_Script) with some extra features
 - All these extra features have been tested working on my Ubuntu PC, however there are no warranties especially for macOS, please use at your own risk
 ## Extra Features
-- Create 10.3-11.2.6 ramdisk and mount /mnt2 on 10.3-11.2.6 devices
-  - Use 10.3.x ramdisk for 10.3.x devices and 11.0-11.2.6 ramdisk for 11.0-11.2.6 devices
+- Create 10.0.1-11.2.6 ramdisk and mount /mnt2 on 10.0.1-11.2.6 devices(for 10.2.1 and lower see Notes)
 - Backup and restore activation files (iOS 10.3+)
   - Run `./sshrd.sh --backup-activation` to backup activation files, `./sshrd.sh --restore-activation` to restore them, both commands require booting ramdisk first
 - Backup and restore the entire contents on NAND
