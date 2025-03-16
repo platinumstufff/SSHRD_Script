@@ -92,7 +92,7 @@ elif [ "$1" = 'reboot' ]; then
     echo "[*] Device should now reboot"
     exit
 elif [ "$1" = 'ssh' ]; then
-    echo "[*] Run mount_filesystems to mount filesystems"
+    echo "[*] On iOS 10.3+, run mount_filesystems to mount filesystems"
     killall iproxy 2>/dev/null | true
     if [ "$oscheck" = 'Linux' ]; then
         sudo systemctl stop usbmuxd 2>/dev/null | true
@@ -115,7 +115,7 @@ elif [ "$1" = '--backup-activation' ]; then
         sleep .1
     fi
     "$oscheck"/iproxy 2222 22 &>/dev/null &
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/bin/mount_filesystems"
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/bin/mount_filesystems || true"
     "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/containers/Data/System/*/Library/activation_records/activation_record.plist .
     "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist .
     "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv .
@@ -136,7 +136,7 @@ elif [ "$1" = '--restore-activation' ]; then
         sleep .1
     fi
     "$oscheck"/iproxy 2222 22 &>/dev/null &
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/bin/mount_filesystems"
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/bin/mount_filesystems || true"
     "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt2/mobile/Media/Downloads/Activation /mnt2/mobile/Media/Activation"
     "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mkdir -p /mnt2/mobile/Media/Downloads/Activation"
     "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no activation_record.plist root@127.0.0.1:/mnt2/mobile/Media/Downloads/Activation
@@ -210,10 +210,10 @@ elif [ "$1" = '--brute-force' ]; then
     "$oscheck"/iproxy 2222 22 &>/dev/null &
     "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1"
     "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "cp /com.apple.springboard.plist /mnt1"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv /mnt2/mobile/Library/Preferences/com.apple.springboard.plist /mnt2/mobile/Library/Preferences/com.apple.springboard.plist.bak"
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "cp -f /com.apple.springboard.plist /mnt1"
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv -f /mnt2/mobile/Library/Preferences/com.apple.springboard.plist /mnt2/mobile/Library/Preferences/com.apple.springboard.plist.bak"
     "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "ln -s /com.apple.springboard.plist /mnt2/mobile/Library/Preferences/com.apple.springboard.plist"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm /mnt2/mobile/Library/SpringBoard/LockoutStateJournal.plist || :"
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt2/mobile/Library/SpringBoard/LockoutStateJournal.plist"
     "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/reboot"
     echo "[*] Now the device should get unlimited passcode attempts"
     killall iproxy 2>/dev/null | true
@@ -386,7 +386,7 @@ else
 "$oscheck"/gaster decrypt work/"$(awk "/""${replace}""/{x=1}x&&/iBSS[.]/{print;exit}" work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | sed 's/Firmware[/]dfu[/]//')" work/iBSS.dec
 "$oscheck"/gaster decrypt work/"$(awk "/""${replace}""/{x=1}x&&/iBEC[.]/{print;exit}" work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | sed 's/Firmware[/]dfu[/]//')" work/iBEC.dec
 fi
-if [ "$major" -eq 10 ] && [ "$patch" -lt 3 ] || [ "$major" -lt 10 ]; then
+if [ "$major" -eq 10 ] && [ "$minor" -lt 3 ] || [ "$major" -lt 10 ]; then
     echo "iOS lower than 10.3 detected, using kairos for bootchain"
     "$oscheck"/kairos work/iBSS.dec work/iBSS.patched
     "$oscheck"/img4 -i work/iBSS.patched -o sshramdisk/iBSS.img4 -M work/IM4M -A -T ibss
@@ -413,7 +413,7 @@ else
     "$oscheck"/img4 -i work/"$(awk "/""${replace}""/{x=1}x&&/kernelcache.release/{print;exit}" work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1)" -o sshramdisk/kernelcache.img4 -M work/IM4M -T rkrn -P work/kc.bpatch `if [ "$oscheck" = 'Linux' ]; then echo "-J"; fi`
 fi 
 
-if [ "$major" -eq 10 ] && [ "$patch" -lt 3 ] || [ "$major" -lt 10 ]; then
+if [ "$major" -eq 10 ] && [ "$minor" -lt 3 ] || [ "$major" -lt 10 ]; then
     echo "iOS lower than 10.3 detected, BuildManifest is little different"
     "$oscheck"/img4 -i work/"$(awk "/""${replace}""/{x=1}x&&/DeviceTree[.]/{print;exit}" work/BuildManifest.plist | grep '<string>' | cut -d\> -f2 | cut -d\< -f1 | sed 's/Firmware[/]all_flash[/]all_flash[.].*[.]production[/]//')" -o sshramdisk/devicetree.img4 -M work/IM4M -T rdtr
 else
