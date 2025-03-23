@@ -116,10 +116,16 @@ elif [ "$1" = '--backup-activation' ]; then
     fi
     "$oscheck"/iproxy 2222 22 &>/dev/null &
     "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/bin/mount_filesystems || true"
-    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/containers/Data/System/*/Library/activation_records/activation_record.plist .
-    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist .
-    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv .
-    echo "[*] Activation files saved to SSHRD_Script directory, check if activation_record.plist, com.apple.commcenter.device_specific_nobackup.plist, IC-Info.sisv all exist and are not empty"
+    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/containers/Data/System/*/Library/activation_records/activation_record.plist . || true
+    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist . || true
+    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv . || true
+    if [ -e activation_record.plist ] && [ -e com.apple.commcenter.device_specific_nobackup.plist ] && [ -e IC-Info.sisv ]; then
+    echo "[*] Activation files saved to SSHRD_Script directory"
+    elif [ -e activation_record.plist ] && [ -e com.apple.commcenter.device_specific_nobackup.plist ] && [ ! -e IC-Info.sisv ]; then
+    echo "[*] Failed to save IC-Info.sisv, delete current /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv, reboot to lock screen, enter DFU mode, boot SSH ramdisk and try again"
+    else
+    echo "[*] Failed to save activation files, select a ramdisk version that is identical or close enough to device's version and try again"
+    fi
     killall iproxy 2>/dev/null | true
     sudo killall usbmuxd 2>/dev/null | true
     exit
@@ -156,6 +162,7 @@ elif [ "$1" = '--restore-activation' ]; then
     "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv -f /mnt2/mobile/Media/Activation/IC-Info.sisv /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes"
     "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 664 /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv"
     "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/chown mobile:mobile /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv"
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt2/mobile/Media/Activation"
     echo "[*] Activation files restored to device"
     killall iproxy 2>/dev/null | true
     sudo killall usbmuxd 2>/dev/null | true
