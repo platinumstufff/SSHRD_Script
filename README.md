@@ -1,10 +1,13 @@
 # SSHRD_Script
 - [Nathan verygenericname's SSHRD_Script](https://github.com/verygenericname/SSHRD_Script) with some extra features
-- All these extra features have been tested working on my Ubuntu PC, however there are no warranties especially for macOS, please use at your own risk
+- All these extra features have been tested working on Ubuntu and macOS Sonoma hackintosh. However there are no warranties especially for ARM macOS, please use at your own risk.
 ## Extra Features
+- Reset via ssh, run `--reset-ssh`
 - Create 10.0.1-11.2.6 ramdisk and mount /mnt2 on 10.0-11.2.6 devices (for 10.2.1 and lower see Notes)
 - Backup and restore activation files (iOS 10.0+)
-  - On 10.3+, run `./sshrd.sh --backup-activation` to backup activation files, `./sshrd.sh --restore-activation` to restore them, both commands require booting ramdisk first. On 10.0-10.2.1 the commands are `./sshrd.sh --backup-activation-hfs` and `./sshrd.sh --restore-activation-hfs`
+  - On 10.3+, run `./sshrd.sh --backup-activation` to backup activation files, `./sshrd.sh --restore-activation` to restore them, both commands require booting ramdisk first.
+  - On 10.0-10.2.1 the commands are `./sshrd.sh --backup-activation-hfs` and `./sshrd.sh --restore-activation-hfs` 
+  - Activation files saved to `Activation_Records/"device serial"`
 - Backup and restore the entire contents on NAND
   - Run `./sshrd.sh --dump-nand` to backup NAND to disk0.gz, `./sshrd.sh --restore-nand` to restore disk0.gz to /dev/disk0 on device
   - Both commands are supposed to be executed directly after device entered DFU mode
