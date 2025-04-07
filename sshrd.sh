@@ -41,22 +41,7 @@ if [ -e sshtars/ssh.tar.gz ]; then
     fi
 fi
 
-if [ ! -e "$oscheck"/gaster ]; then
-    curl -sLO https://nightly.link/verygenericname/gaster/workflows/makefile/main/gaster-"$oscheck".zip
-    unzip gaster-"$oscheck".zip
-    mv gaster "$oscheck"/
-    rm -rf gaster gaster-"$oscheck".zip
-fi
-
 chmod +x "$oscheck"/*
-
-if [ "$1" = '--reset-ssh' ]; then
-    "$oscheck"/iproxy 2222 22 &>/dev/null &
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/nvram oblit-inprogress=5 || true"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/reboot" 
-    echo "[*] Device should now show a progress bar and erase all data"
-    exit
-fi
 
 if [ "$1" = 'clean' ]; then
     rm -rf sshramdisk work
@@ -303,6 +288,21 @@ elif [ "$1" = '--brute-force' ]; then
     "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt2/mobile/Library/SpringBoard/LockoutStateJournal.plist"
     "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/reboot"
     echo "[*] Now the device should get unlimited passcode attempts"
+    killall iproxy 2>/dev/null | true
+    sudo killall usbmuxd 2>/dev/null | true
+    exit
+elif [ "$1" = '--reset-ssh' ]; then
+    if [ "$oscheck" = 'Linux' ]; then
+        sudo systemctl stop usbmuxd 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        sleep .1
+        sudo usbmuxd -pf 2>/dev/null &
+        sleep .1
+    fi
+    "$oscheck"/iproxy 2222 22 &>/dev/null &
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/nvram oblit-inprogress=5 || true"
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/reboot" 
+    echo "[*] Device should now show a progress bar and erase all data"
     killall iproxy 2>/dev/null | true
     sudo killall usbmuxd 2>/dev/null | true
     exit
