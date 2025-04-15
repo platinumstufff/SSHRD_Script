@@ -114,9 +114,9 @@ elif [ "$1" = '--backup-activation' ]; then
     "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/containers/Data/System/*/Library/activation_records/activation_record.plist ./Activation_Records/$serial_number || true
     "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist ./Activation_Records/$serial_number || true
     "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv ./Activation_Records/$serial_number || true
-    if [ -e Activation_Records/$serial_number/activation_record.plist ] && [ -e Activation_Records/$serial_number/com.apple.commcenter.device_specific_nobackup.plist ] && [ -e Activation_Records/$serial_number/IC-Info.sisv ]; then
+    if [ -s Activation_Records/$serial_number/activation_record.plist ] && [ -s Activation_Records/$serial_number/com.apple.commcenter.device_specific_nobackup.plist ] && [ -s Activation_Records/$serial_number/IC-Info.sisv ]; then
     echo "[*] Activation files saved to Activation_Records/$serial_number"
-    elif [ -e Activation_Records/$serial_number/activation_record.plist ] && [ -e Activation_Records/$serial_number/com.apple.commcenter.device_specific_nobackup.plist ] && [ ! -e Activation_Records/$serial_number/IC-Info.sisv ]; then
+    elif [ -s Activation_Records/$serial_number/activation_record.plist ] && [ -s Activation_Records/$serial_number/com.apple.commcenter.device_specific_nobackup.plist ] && [ ! -s Activation_Records/$serial_number/IC-Info.sisv ]; then
     echo "[*] Failed to save IC-Info.sisv, delete current /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv, reboot to lock screen, enter DFU mode, boot SSH ramdisk and try again"
     else
     echo "[*] Failed to save activation files, select a ramdisk version that is identical or close enough to device's version and try again"
@@ -136,6 +136,8 @@ elif [ "$1" = '--restore-activation' ]; then
     serial_number=$("$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/ioreg -l | grep IOPlatformSerialNumber | sed 's/.*IOPlatformSerialNumber\" = \"\(.*\)\"/\1/' | cut -d '\"' -f4")
     if [ ! -e Activation_Records/$serial_number/activation_record.plist ]; then
         echo "[*] Activation files not found"
+        killall iproxy 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
         exit
     fi
     "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/bin/mount_filesystems || true"
@@ -175,21 +177,71 @@ elif [ "$1" = '--backup-activation-hfs' ]; then
     serial_number=$("$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/ioreg -l | grep IOPlatformSerialNumber | sed 's/.*IOPlatformSerialNumber\" = \"\(.*\)\"/\1/' | cut -d '\"' -f4")
     mkdir -p ./Activation_Records/$serial_number
     "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/libexec/seputil --load /mnt1/usr/standalone/firmware/sep-firmware.img4 || true"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
-    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/containers/Data/System/*/Library/activation_records/activation_record.plist ./Activation_Records/$serial_number || true
-    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist ./Activation_Records/$serial_number || true
-    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv ./Activation_Records/$serial_number || true
-    if [ -e Activation_Records/$serial_number/activation_record.plist ] && [ -e Activation_Records/$serial_number/com.apple.commcenter.device_specific_nobackup.plist ] && [ -e Activation_Records/$serial_number/IC-Info.sisv ]; then
-    echo "[*] Activation files saved to Activation_Records/$serial_number"
-    elif [ -e Activation_Records/$serial_number/activation_record.plist ] && [ -e Activation_Records/$serial_number/com.apple.commcenter.device_specific_nobackup.plist ] && [ ! -e Activation_Records/$serial_number/IC-Info.sisv ]; then
-    echo "[*] Failed to save IC-Info.sisv, delete current /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv, reboot to lock screen, enter DFU mode, boot SSH ramdisk and try again"
-    else
-    echo "[*] Failed to save activation files, select a ramdisk version that is identical or close enough to device's version and try again"
+    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt1/System/Library/CoreServices/SystemVersion.plist . || true
+    if [ ! -e SystemVersion.plist ]; then
+        echo "[*] Failed to mount filesystems as HFS+, probably iOS 10.3+, use --backup-activation instead"
+        killall iproxy 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        exit
     fi
-    killall iproxy 2>/dev/null | true
-    sudo killall usbmuxd 2>/dev/null | true
-    exit
+    device_version=$(grep -A1 '<key>ProductVersion</key>' SystemVersion.plist | grep '<string>' | sed -E 's/.*<string>([^<]+)<\/string>.*/\1/')
+    device_major=$(echo "$device_version" | cut -d. -f1)
+    device_minor=$(echo "$device_version" | cut -d. -f2)
+    rm SystemVersion.plist
+    if [ "$device_major" -eq 10 ] && [ "$device_minor" -lt 3 ]; then
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/libexec/seputil --load /mnt1/usr/standalone/firmware/sep-firmware.img4 || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
+        "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/containers/Data/System/*/Library/activation_records/activation_record.plist ./Activation_Records/$serial_number || true
+        "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist ./Activation_Records/$serial_number || true
+        "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv ./Activation_Records/$serial_number || true
+        if [ -s Activation_Records/$serial_number/activation_record.plist ] && [ -s Activation_Records/$serial_number/com.apple.commcenter.device_specific_nobackup.plist ] && [ -s Activation_Records/$serial_number/IC-Info.sisv ]; then
+        echo "[*] Activation files saved to Activation_Records/$serial_number"
+        elif [ -s Activation_Records/$serial_number/activation_record.plist ] && [ -s Activation_Records/$serial_number/com.apple.commcenter.device_specific_nobackup.plist ] && [ ! -s Activation_Records/$serial_number/IC-Info.sisv ]; then
+        echo "[*] Failed to save IC-Info.sisv, delete current /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv, reboot to lock screen, enter DFU mode, boot SSH ramdisk and try again"
+        else
+        echo "[*] Failed to save activation files, select a ramdisk version that is identical or close enough to device's version and try again"
+        fi
+        killall iproxy 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        exit
+    elif [ "$device_major" -eq 9 ] && [ "$device_minor" -eq 3 ]; then
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv /mnt2/containers/Data/System/*/Library/activation_records/activation_record.plist /mnt2/mobile/Media || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv /mnt2/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist /mnt2/mobile/Media || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv /mnt2/mobile/Media || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 777 /mnt2/mobile/Media/activation_record.plist /mnt2/mobile/Media/com.apple.commcenter.device_specific_nobackup.plist /mnt2/mobile/Media/IC-Info.sisv || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/chown mobile:mobile /mnt2/mobile/Media/activation_record.plist /mnt2/mobile/Media/com.apple.commcenter.device_specific_nobackup.plist /mnt2/mobile/Media/IC-Info.sisv || true"
+        "$oscheck"/sshpass -p alpine scp -r -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt1/System/Library/Caches/com.apple.factorydata Activation_Records/$serial_number || true
+        echo "[*] Activation files moved to /private/var/mobile/Media on device, and can be accessed at normal mode without a jailbreak"
+        echo "[*] If failing to move IC-Info.sisv, delete current /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv, reboot and try again"
+        killall iproxy 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        exit
+    elif [ "$device_major" -eq 8 ] || ([ "$device_major" -eq 9 ] && [ "$device_minor" -lt 3 ]); then
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv /mnt2/mobile/Library/mad/activation_records/activation_record.plist /mnt2/mobile/Media || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv /mnt2/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist /mnt2/mobile/Media || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv /mnt2/mobile/Media || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 777 /mnt2/mobile/Media/activation_record.plist /mnt2/mobile/Media/com.apple.commcenter.device_specific_nobackup.plist /mnt2/mobile/Media/IC-Info.sisv || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/chown mobile:mobile /mnt2/mobile/Media/activation_record.plist /mnt2/mobile/Media/com.apple.commcenter.device_specific_nobackup.plist /mnt2/mobile/Media/IC-Info.sisv || true"
+        echo "[*] Activation files moved to /private/var/mobile/Media on device, and can be accessed at normal mode without a jailbreak"
+        echo "[*] If failing to move IC-Info.sisv, delete current /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv, reboot and try again"
+        killall iproxy 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        exit
+    elif [ "$device_major" -eq 7 ]; then
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv /mnt2/root/Library/Lockdown/activation_records/activation_record.plist /mnt2/mobile/Media || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv /mnt2/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist /mnt2/mobile/Media || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv /mnt2/mobile/Media || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 777 /mnt2/mobile/Media/activation_record.plist /mnt2/mobile/Media/com.apple.commcenter.device_specific_nobackup.plist /mnt2/mobile/Media/IC-Info.sisv || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/chown mobile:mobile /mnt2/mobile/Media/activation_record.plist /mnt2/mobile/Media/com.apple.commcenter.device_specific_nobackup.plist /mnt2/mobile/Media/IC-Info.sisv || true"
+        echo "[*] Activation files moved to /private/var/mobile/Media on device, and can be accessed at normal mode without a jailbreak"
+        echo "[*] If failing to move IC-Info.sisv, delete current /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv, reboot and try again"
+        killall iproxy 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        exit
+    fi
 elif [ "$1" = '--restore-activation-hfs' ]; then
     if [ "$oscheck" = 'Linux' ]; then
         sudo systemctl stop usbmuxd 2>/dev/null | true
@@ -200,38 +252,92 @@ elif [ "$1" = '--restore-activation-hfs' ]; then
     fi
     "$oscheck"/iproxy 2222 22 &>/dev/null &
     serial_number=$("$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/ioreg -l | grep IOPlatformSerialNumber | sed 's/.*IOPlatformSerialNumber\" = \"\(.*\)\"/\1/' | cut -d '\"' -f4")
-    if [ ! -e Activation_Records/$serial_number/activation_record.plist ]; then
-        echo "[*] Activation files not found"
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
+    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt1/System/Library/CoreServices/SystemVersion.plist . || true
+    if [ ! -e SystemVersion.plist ]; then
+        echo "[*] Failed to mount filesystems as HFS+, probably iOS 10.3+, use --restore-activation instead"
+        killall iproxy 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
         exit
     fi
-    "$oscheck"/iproxy 2222 22 &>/dev/null &
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/libexec/seputil --load /mnt1/usr/standalone/firmware/sep-firmware.img4 || true"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt2/mobile/Media/Downloads/Activation /mnt2/mobile/Media/Activation"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mkdir -p /mnt2/mobile/Media/Downloads/Activation"
-    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no Activation_Records/$serial_number/activation_record.plist root@127.0.0.1:/mnt2/mobile/Media/Downloads/Activation
-    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no Activation_Records/$serial_number/com.apple.commcenter.device_specific_nobackup.plist root@127.0.0.1:/mnt2/mobile/Media/Downloads/Activation
-    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no Activation_Records/$serial_number/IC-Info.sisv root@127.0.0.1:/mnt2/mobile/Media/Downloads/Activation
-   "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv -f /mnt2/mobile/Media/Downloads/Activation /mnt2/mobile/Media"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/chown -R mobile:mobile /mnt2/mobile/Media/Activation"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod -R 755 /mnt2/mobile/Media/Activation"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "cd /mnt2/containers/Data/System/*/Library/internal; mkdir -p ../activation_records"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv -f /mnt2/mobile/Media/Activation/activation_record.plist /mnt2/containers/Data/System/*/Library/activation_records"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 666 /mnt2/containers/Data/System/*/Library/activation_records/activation_record.plist"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/chown mobile:nobody /mnt2/containers/Data/System/*/Library/activation_records/activation_record.plist"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv -f /mnt2/mobile/Media/Activation/com.apple.commcenter.device_specific_nobackup.plist /mnt2/wireless/Library/Preferences"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 600 /mnt2/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/chown _wireless:_wireless /mnt2/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mkdir -p /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv -f /mnt2/mobile/Media/Activation/IC-Info.sisv /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 664 /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/chown mobile:mobile /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv"
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt2/mobile/Media/Activation"
-    echo "[*] Activation files restored to device"
-    killall iproxy 2>/dev/null | true
-    sudo killall usbmuxd 2>/dev/null | true
-    exit
+    device_version=$(grep -A1 '<key>ProductVersion</key>' SystemVersion.plist | grep '<string>' | sed -E 's/.*<string>([^<]+)<\/string>.*/\1/')
+    device_major=$(echo "$device_version" | cut -d. -f1)
+    device_minor=$(echo "$device_version" | cut -d. -f2)
+    rm SystemVersion.plist
+    if [ "$device_major" -eq 10 ] && [ "$device_minor" -lt 3 ]; then
+        if [ ! -e Activation_Records/$serial_number/activation_record.plist ]; then
+            echo "[*] Activation files not found"
+            killall iproxy 2>/dev/null | true
+            sudo killall usbmuxd 2>/dev/null | true
+            exit
+        fi
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/libexec/seputil --load /mnt1/usr/standalone/firmware/sep-firmware.img4 || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt2/mobile/Media/Downloads/Activation /mnt2/mobile/Media/Activation"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mkdir -p /mnt2/mobile/Media/Downloads/Activation"
+        "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no Activation_Records/$serial_number/activation_record.plist root@127.0.0.1:/mnt2/mobile/Media/Downloads/Activation
+        "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no Activation_Records/$serial_number/com.apple.commcenter.device_specific_nobackup.plist root@127.0.0.1:/mnt2/mobile/Media/Downloads/Activation
+        "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no Activation_Records/$serial_number/IC-Info.sisv root@127.0.0.1:/mnt2/mobile/Media/Downloads/Activation
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv -f /mnt2/mobile/Media/Downloads/Activation /mnt2/mobile/Media"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/chown -R mobile:mobile /mnt2/mobile/Media/Activation"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod -R 755 /mnt2/mobile/Media/Activation"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "cd /mnt2/containers/Data/System/*/Library/internal; mkdir -p ../activation_records"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv -f /mnt2/mobile/Media/Activation/activation_record.plist /mnt2/containers/Data/System/*/Library/activation_records"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 666 /mnt2/containers/Data/System/*/Library/activation_records/activation_record.plist"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/chown mobile:nobody /mnt2/containers/Data/System/*/Library/activation_records/activation_record.plist"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv -f /mnt2/mobile/Media/Activation/com.apple.commcenter.device_specific_nobackup.plist /mnt2/wireless/Library/Preferences"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 600 /mnt2/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/chown _wireless:_wireless /mnt2/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mkdir -p /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv -f /mnt2/mobile/Media/Activation/IC-Info.sisv /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 664 /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/chown mobile:mobile /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt2/mobile/Media/Activation"
+        echo "[*] Activation files restored to device"
+        killall iproxy 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        exit
+    elif [ "$device_major" -eq 9 ] && [ "$device_minor" -eq 3 ]; then
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "cd /mnt2/containers/Data/System/*/Library/internal; mkdir -p ../activation_records"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv -f /mnt2/mobile/Media/activation_record.plist /mnt2/containers/Data/System/*/Library/activation_records"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 666 /mnt2/containers/Data/System/*/Library/activation_records/activation_record.plist"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/chown mobile:nobody /mnt2/containers/Data/System/*/Library/activation_records/activation_record.plist"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv -f /mnt2/mobile/Media/com.apple.commcenter.device_specific_nobackup.plist /mnt2/wireless/Library/Preferences"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 600 /mnt2/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/chown _wireless:_wireless /mnt2/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mkdir -p /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv -f /mnt2/mobile/Media/IC-Info.sisv /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 664 /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/chown mobile:mobile /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv"
+        echo "[*] Activation files restored to device"
+        echo "[*] For A9 devices that got activation error, if activation files are saved from iOS 10+, you may also backup /mnt1/System/Library/Caches/com.apple.factorydata and restore the folder along with activation files at the same time"
+        killall iproxy 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        exit
+    elif [ "$device_major" -eq 9 ] && [ "$device_minor" -lt 3 ]; then
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mkdir -p /mnt2/mobile/Library/mad/activation_records"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv -f /mnt2/mobile/Media/activation_record.plist /mnt2/mobile/Library/mad/activation_records"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 666 /mnt2/mobile/Library/mad/activation_records/activation_record.plist"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/chown mobile:nobody /mnt2/mobile/Library/mad/activation_records/activation_record.plist"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv -f /mnt2/mobile/Media/com.apple.commcenter.device_specific_nobackup.plist /mnt2/wireless/Library/Preferences"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 600 /mnt2/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/chown _wireless:_wireless /mnt2/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mkdir -p /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv -f /mnt2/mobile/Media/IC-Info.sisv /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 664 /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/chown mobile:mobile /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv"
+        echo "[*] Activation files restored to device"
+        killall iproxy 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        exit
+    elif [ "$device_major" -eq 7 ] || [ "$device_major" -eq 8 ]; then
+        echo "[*] Restoring activation files via ramdisk is not supported on 64-bit iOS 7-8 devices"
+        killall iproxy 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        exit
+    fi
 elif [ "$1" = '--dump-nand' ]; then
     ./sshrd.sh 12.0
     ./sshrd.sh boot
@@ -486,9 +592,9 @@ else
     "$oscheck"/img4 -i work/iBEC.patched -o sshramdisk/iBEC.img4 -M work/IM4M -A -T ibec
 fi   
 
-
+# Currently not working
 if [ "$major" -lt 10 ]; then
-    echo "iOS lower than 10.0.1 detected, using Kernel64Patcher for kernel patching"
+    echo "iOS lower than 10 detected, using Kernel64Patcher for kernel patching"
     "$oscheck"/img4 -i work/"$(awk "/""${replace}""/{x=1}x&&/kernelcache.release/{print;exit}" work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1)" -o work/kcache.raw
     "$oscheck"/Kernel64Patcher work/kcache.raw work/kcache.patched -a
     "$oscheck"/kerneldiff work/kcache.raw work/kcache.patched work/kc.bpatch
@@ -501,7 +607,7 @@ else
 fi 
 
 if [ "$major" -eq 10 ] && [ "$minor" -lt 3 ] || [ "$major" -lt 10 ]; then
-    echo "iOS lower than 10.3 detected, BuildManifest is little different"
+    echo "iOS lower than 10.3 detected, BuildManifest is a little different"
     "$oscheck"/img4 -i work/"$(awk "/""${replace}""/{x=1}x&&/DeviceTree[.]/{print;exit}" work/BuildManifest.plist | grep '<string>' | cut -d\> -f2 | cut -d\< -f1 | sed 's/Firmware[/]all_flash[/]all_flash[.].*[.]production[/]//')" -o sshramdisk/devicetree.img4 -M work/IM4M -T rdtr
 else
     "$oscheck"/img4 -i work/"$(awk "/""${replace}""/{x=1}x&&/DeviceTree[.]/{print;exit}" work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | sed 's/Firmware[/]all_flash[/]//')" -o sshramdisk/devicetree.img4 -M work/IM4M -T rdtr
