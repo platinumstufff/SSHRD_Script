@@ -458,7 +458,11 @@ if [ "$1" = 'reset' ]; then
     fi
 
     if [ "$check" = '0x8960' ]; then
-        "$oscheck"/ipwnder > /dev/null
+        if [ "$oscheck" = 'Linux' ]; then
+            "$oscheck"/ipwnder > /dev/null
+        else
+            "$oscheck"/ipwnder_lite > /dev/null
+        fi
     else
         "$oscheck"/gaster pwn > /dev/null
     fi
@@ -501,7 +505,11 @@ if [ "$1" = 'boot' ]; then
     patch=${patch:-0}
     
     if [ "$check" = '0x8960' ]; then
-        "$oscheck"/ipwnder > /dev/null
+        if [ "$oscheck" = 'Linux' ]; then
+            "$oscheck"/ipwnder > /dev/null
+        else
+            "$oscheck"/ipwnder_lite > /dev/null
+        fi
     else
         "$oscheck"/gaster pwn > /dev/null
     fi
