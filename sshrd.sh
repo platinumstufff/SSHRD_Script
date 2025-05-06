@@ -269,6 +269,146 @@ elif [ "$1" = '--backup-activation-hfs' ]; then
         fi
         exit
     fi
+    
+elif [ "$1" = '--backup-gestalt-ios9' ]; then
+    if [ "$oscheck" = 'Linux' ]; then
+        sudo systemctl stop usbmuxd 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        sleep .1
+        sudo usbmuxd -pf 2>/dev/null &
+        sleep .1
+    fi
+    "$oscheck"/iproxy 2222 22 &>/dev/null &
+    serial_number=$("$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/ioreg -l | grep IOPlatformSerialNumber | sed 's/.*IOPlatformSerialNumber\" = \"\(.*\)\"/\1/' | cut -d '\"' -f4")
+    mkdir -p ./Activation_Records/$serial_number
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
+    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt1/System/Library/CoreServices/SystemVersion.plist . || true
+    if [ ! -e SystemVersion.plist ]; then
+        echo "[*] Failed to mount filesystems as HFS+, probably iOS 10.3+, iOS 10(not quite true, pls see notes) store MobileGestalt cache in protected area."
+        echo "[*] Rename setup.app, jailbreak with tns-sockport, dump using sftp or afc2."
+        killall iproxy 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        exit
+    fi
+    device_version=$(grep -A1 '<key>ProductVersion</key>' SystemVersion.plist | grep '<string>' | sed -E 's/.*<string>([^<]+)<\/string>.*/\1/')
+    device_major=$(echo "$device_version" | cut -d. -f1)
+    device_minor=$(echo "$device_version" | cut -d. -f2)
+    rm SystemVersion.plist
+    if [ "$device_major" -eq 10 ] && [ "$device_minor" -lt 3 ]; then
+        echo "[*] hfs+ iOS 10 detected. Use --hactivate-ios10-hfs instead"
+        killall iproxy 2>/dev/null | true
+        if [ "$oscheck" = 'Linux' ]; then
+            sudo killall usbmuxd 2>/dev/null | true
+        fi
+        exit
+        
+    elif [ "$device_major" -eq 9 ] && [ "$device_minor" -eq 3 ]; then
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv /mnt2/mobile/Library/Caches/com.apple.MobileGestalt.plist /mnt2/mobile/Media || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 777 /mnt2/mobile/Media/com.apple.MobileGestalt.plist || true"
+        echo "[*] com.apple.MobileGestalt.plist moved to /private/var/mobile/Media on device, and can be accessed at normal mode without a jailbreak"
+        killall iproxy 2>/dev/null | true
+        if [ "$oscheck" = 'Linux' ]; then
+            sudo killall usbmuxd 2>/dev/null | true
+        fi
+        exit
+    fi
+elif [ "$1" = '--restore-gestalt-ios9' ]; then
+    if [ "$oscheck" = 'Linux' ]; then
+        sudo systemctl stop usbmuxd 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        sleep .1
+        sudo usbmuxd -pf 2>/dev/null &
+        sleep .1
+    fi
+    "$oscheck"/iproxy 2222 22 &>/dev/null &
+    serial_number=$("$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/ioreg -l | grep IOPlatformSerialNumber | sed 's/.*IOPlatformSerialNumber\" = \"\(.*\)\"/\1/' | cut -d '\"' -f4")
+    mkdir -p ./Activation_Records/$serial_number
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
+    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt1/System/Library/CoreServices/SystemVersion.plist . || true
+    if [ ! -e SystemVersion.plist ]; then
+        echo "[*] Failed to mount filesystems as HFS+, probably iOS 10.3+, iOS 10(not quite true, pls see notes) store MobileGestalt cache in protected area."
+        echo "[*] Rename setup.app, jailbreak with tns-sockport, dump using sftp or afc2."
+        killall iproxy 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        exit
+    fi
+    device_version=$(grep -A1 '<key>ProductVersion</key>' SystemVersion.plist | grep '<string>' | sed -E 's/.*<string>([^<]+)<\/string>.*/\1/')
+    device_major=$(echo "$device_version" | cut -d. -f1)
+    device_minor=$(echo "$device_version" | cut -d. -f2)
+    rm SystemVersion.plist
+    if [ "$device_major" -eq 10 ] && [ "$device_minor" -lt 3 ]; then
+        echo "[*] hfs+ iOS 10 detected. Use --hactivate-ios10-hfs instead"
+        killall iproxy 2>/dev/null | true
+        if [ "$oscheck" = 'Linux' ]; then
+            sudo killall usbmuxd 2>/dev/null | true
+        fi
+        exit
+        
+    elif [ "$device_major" -eq 9 ] && [ "$device_minor" -eq 3 ]; then
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv /mnt2/mobile/Media/com.apple.MobileGestalt.plist /mnt2/mobile/Library/Caches/ || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 555 /mnt2/mobile/Library/Caches/com.apple.MobileGestalt.plist || true"
+        echo "[*] com.apple.MobileGestalt.plist moved to /private/ver/mobile/Library/Caches/ on device, and cannot be overwritten"
+        killall iproxy 2>/dev/null | true
+        if [ "$oscheck" = 'Linux' ]; then
+            sudo killall usbmuxd 2>/dev/null | true
+        fi
+        exit
+    fi
+elif [ "$1" = '--hactivate-ios10-hfs' ]; then
+    if [ "$oscheck" = 'Linux' ]; then
+        sudo systemctl stop usbmuxd 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        sleep .1
+        sudo usbmuxd -pf 2>/dev/null &
+        sleep .1
+    fi
+    "$oscheck"/iproxy 2222 22 &>/dev/null &
+    serial_number=$("$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/ioreg -l | grep IOPlatformSerialNumber | sed 's/.*IOPlatformSerialNumber\" = \"\(.*\)\"/\1/' | cut -d '\"' -f4")
+    mkdir -p ./Activation_Records/$serial_number
+    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
+    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt1/System/Library/CoreServices/SystemVersion.plist . || true
+    if [ ! -e SystemVersion.plist ]; then
+        echo "[*] Failed to mount filesystems as HFS+, probably iOS 10.3+, iOS 10.? (not quite true, pls see notes) store MobileGestalt cache in protected area."
+        echo "[*] Rename setup.app, jailbreak with tns-sockport, dump using sftp or afc2."
+        killall iproxy 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        exit
+    fi
+    device_version=$(grep -A1 '<key>ProductVersion</key>' SystemVersion.plist | grep '<string>' | sed -E 's/.*<string>([^<]+)<\/string>.*/\1/')
+    device_major=$(echo "$device_version" | cut -d. -f1)
+    device_minor=$(echo "$device_version" | cut -d. -f2)
+    rm SystemVersion.plist
+    if [ "$device_major" -eq 10 ] && [ "$device_minor" -lt 3 ]; then
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/libexec/seputil --load /mnt1/usr/standalone/firmware/sep-firmware.img4 || true"
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
+        "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/mobile/Library/Caches/com.apple.MobileGestalt.plist ./temp.plist
+        plutil -insert CacheExtra.a6vjPkzcRjrsXmniFsm0dg -bool true temp.plist || {
+        echo "[*] Sorry, hactivation not supported on Linux yet(. Exiting..."
+        killall iproxy 2>/dev/null | true
+        sudo killall usbmuxd 2>/dev/null | true
+        exit
+        }
+        "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no temp.plist root@127.0.0.1:/mnt2/mobile/Library/Caches/com.apple.MobileGestalt.plist
+        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 555 /mnt2/mobile/Library/Caches/com.apple.MobileGestalt.plist || true"
+        rm ./temp.plist
+        echo "[*] Its done yay!"
+        killall iproxy 2>/dev/null | true
+        if [ "$oscheck" = 'Linux' ]; then
+            sudo killall usbmuxd 2>/dev/null | true
+        fi
+        exit
+        
+    elif [ "$device_major" -eq 9 ] && [ "$device_minor" -eq 3 ]; then
+        echo "[*] iOS 9 does not support automatic hactivation."
+        echo "[*] Backup and restore mobilegestalt manually."
+        killall iproxy 2>/dev/null | true
+        if [ "$oscheck" = 'Linux' ]; then
+            sudo killall usbmuxd 2>/dev/null | true
+        fi
+        exit
+    fi
 elif [ "$1" = '--restore-activation-hfs' ]; then
     if [ "$oscheck" = 'Linux' ]; then
         sudo systemctl stop usbmuxd 2>/dev/null | true
@@ -716,14 +856,14 @@ if [ "$oscheck" = 'Darwin' ]; then
         ../"$oscheck"/pzb -g "$(/usr/bin/plutil -extract "BuildIdentities".0."Manifest"."RestoreRamDisk"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)" "$ipswurl12"
                 ../"$oscheck"/img4 -i "$(/usr/bin/plutil -extract "BuildIdentities".0."Manifest"."RestoreRamDisk"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)" -o ramdisk.dmg
         hdiutil attach -mountpoint /tmp/12rd ramdisk.dmg -owners off
-        cp /tmp/12rd/usr/lib/libiconv.2.dylib /tmp/12rd/usr/lib/libcharset.1.dylib /tmp/SSHRD/usr/lib/
+        sudo cp /tmp/12rd/usr/lib/libiconv.2.dylib /tmp/12rd/usr/lib/libcharset.1.dylib /tmp/SSHRD/usr/lib/
         hdiutil detach -force /tmp/12rd
         cd ..
         rm -rf 12rd
     else
         :
             fi
-        "$oscheck"/gtar -x --no-overwrite-dir -f sshtars/ssh.tar.gz -C /tmp/SSHRD/
+        sudo "$oscheck"/gtar -x --no-overwrite-dir -f sshtars/ssh.tar.gz -C /tmp/SSHRD/
     fi
 
     hdiutil detach -force /tmp/SSHRD
@@ -795,4 +935,4 @@ echo ""
 echo "[*] Finished! Please use ./sshrd.sh boot to boot your device"
 echo $1 > sshramdisk/version.txt
 
- } | tee logs/"$(date +%T)"-"$(date +%F)"-"$(uname)"-"$(uname -r)".log
+ } # | tee logs/"$(date +%T)"-"$(date +%F)"-"$(uname)"-"$(uname -r)".log
