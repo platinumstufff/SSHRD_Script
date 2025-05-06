@@ -392,7 +392,7 @@ elif [ "$1" = '--hactivate-ios10-hfs' ]; then
         }
         "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no temp.plist root@127.0.0.1:/mnt2/mobile/Library/Caches/com.apple.MobileGestalt.plist
         "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 555 /mnt2/mobile/Library/Caches/com.apple.MobileGestalt.plist || true"
-        rm ./temp.plist
+        rm temp.plist
         echo "[*] Its done yay!"
         killall iproxy 2>/dev/null | true
         if [ "$oscheck" = 'Linux' ]; then

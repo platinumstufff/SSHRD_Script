@@ -6,3 +6,4 @@ sshramdisk
 .irecovery
 *.log
 Activation_Records
+temp.plist
