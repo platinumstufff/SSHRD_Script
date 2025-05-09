@@ -66,9 +66,7 @@ elif [ "$1" = 'dump-blobs' ]; then
     "$oscheck"/sshpass -p 'alpine' ssh -o StrictHostKeyChecking=no -p2222 root@localhost "cat /dev/$device" | dd of=dump.raw bs=256 count=$((0x4000))
     "$oscheck"/img4tool --convert -s dumped.shsh dump.raw
     killall iproxy 2>/dev/null | true
-    if [ "$oscheck" = 'Linux' ]; then
-        sudo killall usbmuxd 2>/dev/null | true
-    fi
+    sudo killall usbmuxd 2>/dev/null | true
     rm dump.raw
     echo "[*] Onboard blobs should have dumped to the dumped.shsh file"
     exit
@@ -83,9 +81,7 @@ elif [ "$1" = 'reboot' ]; then
     "$oscheck"/iproxy 2222 22 &>/dev/null &
     "$oscheck"/sshpass -p 'alpine' ssh -o StrictHostKeyChecking=no -p2222 root@localhost "/sbin/reboot"
     killall iproxy 2>/dev/null | true
-    if [ "$oscheck" = 'Linux' ]; then
-        sudo killall usbmuxd 2>/dev/null | true
-    fi
+    sudo killall usbmuxd 2>/dev/null | true
     echo "[*] Device should now reboot"
     exit
 elif [ "$1" = 'ssh' ]; then
@@ -101,9 +97,7 @@ elif [ "$1" = 'ssh' ]; then
     "$oscheck"/iproxy 2222 22 &>/dev/null &
     "$oscheck"/sshpass -p 'alpine' ssh -o StrictHostKeyChecking=no -p2222 root@localhost || true
     killall iproxy 2>/dev/null | true
-    if [ "$oscheck" = 'Linux' ]; then
-        sudo killall usbmuxd 2>/dev/null | true
-    fi
+    sudo killall usbmuxd 2>/dev/null | true
     exit
 elif [ "$1" = '--backup-activation' ]; then
     if [ "$oscheck" = 'Linux' ]; then
@@ -133,9 +127,7 @@ elif [ "$1" = '--backup-activation' ]; then
     echo "[*] Failed to save activation files, select a ramdisk version that is identical or close enough to device's version and try again"
     fi
     killall iproxy 2>/dev/null | true
-    if [ "$oscheck" = 'Linux' ]; then
-        sudo killall usbmuxd 2>/dev/null | true
-    fi
+    sudo killall usbmuxd 2>/dev/null | true
     exit
 elif [ "$1" = '--restore-activation' ]; then
     if [ "$oscheck" = 'Linux' ]; then
@@ -150,9 +142,7 @@ elif [ "$1" = '--restore-activation' ]; then
     if [ ! -e Activation_Records/$serial_number/*_record.plist ]; then
         echo "[*] Activation files not found"
         killall iproxy 2>/dev/null | true
-        if [ "$oscheck" = 'Linux' ]; then
         sudo killall usbmuxd 2>/dev/null | true
-        fi
         exit
     fi
     "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/bin/mount_filesystems || true"
@@ -178,9 +168,7 @@ elif [ "$1" = '--restore-activation' ]; then
     "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt2/mobile/Media/Activation"
     echo "[*] Activation files restored to device"
     killall iproxy 2>/dev/null | true
-    if [ "$oscheck" = 'Linux' ]; then
-        sudo killall usbmuxd 2>/dev/null | true
-    fi
+    sudo killall usbmuxd 2>/dev/null | true
     exit
 elif [ "$1" = '--backup-activation-hfs' ]; then
     if [ "$oscheck" = 'Linux' ]; then
@@ -224,9 +212,7 @@ elif [ "$1" = '--backup-activation-hfs' ]; then
         echo "[*] Failed to save activation files, select a ramdisk version that is identical or close enough to device's version and try again"
         fi
         killall iproxy 2>/dev/null | true
-        if [ "$oscheck" = 'Linux' ]; then
-            sudo killall usbmuxd 2>/dev/null | true
-        fi
+        sudo killall usbmuxd 2>/dev/null | true
         exit
     elif [ "$device_major" -eq 9 ] && [ "$device_minor" -eq 3 ]; then
         "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
@@ -238,9 +224,7 @@ elif [ "$1" = '--backup-activation-hfs' ]; then
         echo "[*] Activation files moved to /private/var/mobile/Media on device, and can be accessed at normal mode without a jailbreak"
         echo "[*] If failing to move IC-Info.sisv, delete current /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv, reboot and try again"
         killall iproxy 2>/dev/null | true
-        if [ "$oscheck" = 'Linux' ]; then
-            sudo killall usbmuxd 2>/dev/null | true
-        fi
+        sudo killall usbmuxd 2>/dev/null | true
         exit
     elif [ "$device_major" -eq 8 ] || ([ "$device_major" -eq 9 ] && [ "$device_minor" -lt 3 ]); then
         "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
@@ -251,9 +235,7 @@ elif [ "$1" = '--backup-activation-hfs' ]; then
         echo "[*] Activation files moved to /private/var/mobile/Media on device, and can be accessed at normal mode without a jailbreak"
         echo "[*] If failing to move IC-Info.sisv, delete current /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv, reboot and try again"
         killall iproxy 2>/dev/null | true
-        if [ "$oscheck" = 'Linux' ]; then
-            sudo killall usbmuxd 2>/dev/null | true
-        fi
+        sudo killall usbmuxd 2>/dev/null | true
         exit
     elif [ "$device_major" -eq 7 ]; then
         "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
@@ -264,149 +246,7 @@ elif [ "$1" = '--backup-activation-hfs' ]; then
         echo "[*] Activation files moved to /private/var/mobile/Media on device, and can be accessed at normal mode without a jailbreak"
         echo "[*] If failing to move IC-Info.sisv, delete current /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv, reboot and try again"
         killall iproxy 2>/dev/null | true
-        if [ "$oscheck" = 'Linux' ]; then
-            sudo killall usbmuxd 2>/dev/null | true
-        fi
-        exit
-    fi
-    
-elif [ "$1" = '--backup-gestalt-ios9' ]; then
-    if [ "$oscheck" = 'Linux' ]; then
-        sudo systemctl stop usbmuxd 2>/dev/null | true
         sudo killall usbmuxd 2>/dev/null | true
-        sleep .1
-        sudo usbmuxd -pf 2>/dev/null &
-        sleep .1
-    fi
-    "$oscheck"/iproxy 2222 22 &>/dev/null &
-    serial_number=$("$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/ioreg -l | grep IOPlatformSerialNumber | sed 's/.*IOPlatformSerialNumber\" = \"\(.*\)\"/\1/' | cut -d '\"' -f4")
-    mkdir -p ./Activation_Records/$serial_number
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
-    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt1/System/Library/CoreServices/SystemVersion.plist . || true
-    if [ ! -e SystemVersion.plist ]; then
-        echo "[*] Failed to mount filesystems as HFS+, probably iOS 10.3+, iOS 10(not quite true, pls see notes) store MobileGestalt cache in protected area."
-        echo "[*] Rename setup.app, jailbreak with tns-sockport, dump using sftp or afc2."
-        killall iproxy 2>/dev/null | true
-        sudo killall usbmuxd 2>/dev/null | true
-        exit
-    fi
-    device_version=$(grep -A1 '<key>ProductVersion</key>' SystemVersion.plist | grep '<string>' | sed -E 's/.*<string>([^<]+)<\/string>.*/\1/')
-    device_major=$(echo "$device_version" | cut -d. -f1)
-    device_minor=$(echo "$device_version" | cut -d. -f2)
-    rm SystemVersion.plist
-    if [ "$device_major" -eq 10 ] && [ "$device_minor" -lt 3 ]; then
-        echo "[*] hfs+ iOS 10 detected. Use --hactivate-ios10-hfs instead"
-        killall iproxy 2>/dev/null | true
-        if [ "$oscheck" = 'Linux' ]; then
-            sudo killall usbmuxd 2>/dev/null | true
-        fi
-        exit
-        
-    elif [ "$device_major" -eq 9 ] && [ "$device_minor" -eq 3 ]; then
-        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
-        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv /mnt2/mobile/Library/Caches/com.apple.MobileGestalt.plist /mnt2/mobile/Media || true"
-        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 777 /mnt2/mobile/Media/com.apple.MobileGestalt.plist || true"
-        echo "[*] com.apple.MobileGestalt.plist moved to /private/var/mobile/Media on device, and can be accessed at normal mode without a jailbreak"
-        killall iproxy 2>/dev/null | true
-        if [ "$oscheck" = 'Linux' ]; then
-            sudo killall usbmuxd 2>/dev/null | true
-        fi
-        exit
-    fi
-elif [ "$1" = '--restore-gestalt-ios9' ]; then
-    if [ "$oscheck" = 'Linux' ]; then
-        sudo systemctl stop usbmuxd 2>/dev/null | true
-        sudo killall usbmuxd 2>/dev/null | true
-        sleep .1
-        sudo usbmuxd -pf 2>/dev/null &
-        sleep .1
-    fi
-    "$oscheck"/iproxy 2222 22 &>/dev/null &
-    serial_number=$("$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/ioreg -l | grep IOPlatformSerialNumber | sed 's/.*IOPlatformSerialNumber\" = \"\(.*\)\"/\1/' | cut -d '\"' -f4")
-    mkdir -p ./Activation_Records/$serial_number
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
-    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt1/System/Library/CoreServices/SystemVersion.plist . || true
-    if [ ! -e SystemVersion.plist ]; then
-        echo "[*] Failed to mount filesystems as HFS+, probably iOS 10.3+, iOS 10(not quite true, pls see notes) store MobileGestalt cache in protected area."
-        echo "[*] Rename setup.app, jailbreak with tns-sockport, dump using sftp or afc2."
-        killall iproxy 2>/dev/null | true
-        sudo killall usbmuxd 2>/dev/null | true
-        exit
-    fi
-    device_version=$(grep -A1 '<key>ProductVersion</key>' SystemVersion.plist | grep '<string>' | sed -E 's/.*<string>([^<]+)<\/string>.*/\1/')
-    device_major=$(echo "$device_version" | cut -d. -f1)
-    device_minor=$(echo "$device_version" | cut -d. -f2)
-    rm SystemVersion.plist
-    if [ "$device_major" -eq 10 ] && [ "$device_minor" -lt 3 ]; then
-        echo "[*] hfs+ iOS 10 detected. Use --hactivate-ios10-hfs instead"
-        killall iproxy 2>/dev/null | true
-        if [ "$oscheck" = 'Linux' ]; then
-            sudo killall usbmuxd 2>/dev/null | true
-        fi
-        exit
-        
-    elif [ "$device_major" -eq 9 ] && [ "$device_minor" -eq 3 ]; then
-        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
-        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv /mnt2/mobile/Media/com.apple.MobileGestalt.plist /mnt2/mobile/Library/Caches/ || true"
-        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 555 /mnt2/mobile/Library/Caches/com.apple.MobileGestalt.plist || true"
-        echo "[*] com.apple.MobileGestalt.plist moved to /private/ver/mobile/Library/Caches/ on device, and cannot be overwritten"
-        killall iproxy 2>/dev/null | true
-        if [ "$oscheck" = 'Linux' ]; then
-            sudo killall usbmuxd 2>/dev/null | true
-        fi
-        exit
-    fi
-elif [ "$1" = '--hactivate-ios10-hfs' ]; then
-    if [ "$oscheck" = 'Linux' ]; then
-        sudo systemctl stop usbmuxd 2>/dev/null | true
-        sudo killall usbmuxd 2>/dev/null | true
-        sleep .1
-        sudo usbmuxd -pf 2>/dev/null &
-        sleep .1
-    fi
-    "$oscheck"/iproxy 2222 22 &>/dev/null &
-    serial_number=$("$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/ioreg -l | grep IOPlatformSerialNumber | sed 's/.*IOPlatformSerialNumber\" = \"\(.*\)\"/\1/' | cut -d '\"' -f4")
-    mkdir -p ./Activation_Records/$serial_number
-    "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
-    "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt1/System/Library/CoreServices/SystemVersion.plist . || true
-    if [ ! -e SystemVersion.plist ]; then
-        echo "[*] Failed to mount filesystems as HFS+, probably iOS 10.3+, iOS 10.? (not quite true, pls see notes) store MobileGestalt cache in protected area."
-        echo "[*] Rename setup.app, jailbreak with tns-sockport, dump using sftp or afc2."
-        killall iproxy 2>/dev/null | true
-        sudo killall usbmuxd 2>/dev/null | true
-        exit
-    fi
-    device_version=$(grep -A1 '<key>ProductVersion</key>' SystemVersion.plist | grep '<string>' | sed -E 's/.*<string>([^<]+)<\/string>.*/\1/')
-    device_major=$(echo "$device_version" | cut -d. -f1)
-    device_minor=$(echo "$device_version" | cut -d. -f2)
-    rm SystemVersion.plist
-    if [ "$device_major" -eq 10 ] && [ "$device_minor" -lt 3 ]; then
-        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/libexec/seputil --load /mnt1/usr/standalone/firmware/sep-firmware.img4 || true"
-        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
-        "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no root@127.0.0.1:/mnt2/mobile/Library/Caches/com.apple.MobileGestalt.plist ./temp.plist
-        plutil -insert CacheExtra.a6vjPkzcRjrsXmniFsm0dg -bool true temp.plist || {
-        echo "[*] Sorry, hactivation not supported on Linux yet(. Exiting..."
-        killall iproxy 2>/dev/null | true
-        sudo killall usbmuxd 2>/dev/null | true
-        exit
-        }
-        "$oscheck"/sshpass -p alpine scp -P2222 -o StrictHostKeyChecking=no temp.plist root@127.0.0.1:/mnt2/mobile/Library/Caches/com.apple.MobileGestalt.plist
-        "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "chmod 555 /mnt2/mobile/Library/Caches/com.apple.MobileGestalt.plist || true"
-        rm temp.plist
-        echo "[*] Its done yay!"
-        killall iproxy 2>/dev/null | true
-        if [ "$oscheck" = 'Linux' ]; then
-            sudo killall usbmuxd 2>/dev/null | true
-        fi
-        exit
-        
-    elif [ "$device_major" -eq 9 ] && [ "$device_minor" -eq 3 ]; then
-        echo "[*] iOS 9 does not support automatic hactivation."
-        echo "[*] Backup and restore mobilegestalt manually."
-        killall iproxy 2>/dev/null | true
-        if [ "$oscheck" = 'Linux' ]; then
-            sudo killall usbmuxd 2>/dev/null | true
-        fi
         exit
     fi
 elif [ "$1" = '--restore-activation-hfs' ]; then
@@ -424,9 +264,7 @@ elif [ "$1" = '--restore-activation-hfs' ]; then
     if [ ! -e SystemVersion.plist ]; then
         echo "[*] Failed to mount filesystems as HFS+, probably iOS 10.3+, use --restore-activation instead"
         killall iproxy 2>/dev/null | true
-        if [ "$oscheck" = 'Linux' ]; then
-            sudo killall usbmuxd 2>/dev/null | true
-        fi
+        sudo killall usbmuxd 2>/dev/null | true
         exit
     fi
     device_version=$(grep -A1 '<key>ProductVersion</key>' SystemVersion.plist | grep '<string>' | sed -E 's/.*<string>([^<]+)<\/string>.*/\1/')
@@ -437,9 +275,7 @@ elif [ "$1" = '--restore-activation-hfs' ]; then
         if [ ! -e Activation_Records/$serial_number/*_record.plist ]; then
             echo "[*] Activation files not found"
             killall iproxy 2>/dev/null | true
-            if [ "$oscheck" = 'Linux' ]; then
-                sudo killall usbmuxd 2>/dev/null | true
-            fi
+            sudo killall usbmuxd 2>/dev/null | true
             exit
         fi
         "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/libexec/seputil --load /mnt1/usr/standalone/firmware/sep-firmware.img4 || true"
@@ -466,9 +302,7 @@ elif [ "$1" = '--restore-activation-hfs' ]; then
         "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt2/mobile/Media/Activation"
         echo "[*] Activation files restored to device"
         killall iproxy 2>/dev/null | true
-        if [ "$oscheck" = 'Linux' ]; then
-            sudo killall usbmuxd 2>/dev/null | true
-        fi
+        sudo killall usbmuxd 2>/dev/null | true
         exit
     elif [ "$device_major" -eq 9 ] && [ "$device_minor" -eq 3 ]; then
         "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
@@ -486,9 +320,7 @@ elif [ "$1" = '--restore-activation-hfs' ]; then
         echo "[*] Activation files restored to device"
         echo "[*] For A9 devices that got activation error, if activation files are saved from iOS 10+, you may also backup /mnt1/System/Library/Caches/com.apple.factorydata and restore the folder along with activation files at the same time"
         killall iproxy 2>/dev/null | true
-        if [ "$oscheck" = 'Linux' ]; then
-            sudo killall usbmuxd 2>/dev/null | true
-        fi
+        sudo killall usbmuxd 2>/dev/null | true
         exit
     elif ([ "$device_major" -eq 8 ] && [ "$device_minor" -ge 3 ]) || ([ "$device_major" -eq 9 ] && [ "$device_minor" -lt 3 ]); then
         "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s2 /mnt2 || true"
@@ -505,16 +337,12 @@ elif [ "$1" = '--restore-activation-hfs' ]; then
         "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/usr/sbin/chown mobile:mobile /mnt2/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv"
         echo "[*] Activation files restored to device"
         killall iproxy 2>/dev/null | true
-        if [ "$oscheck" = 'Linux' ]; then
-            sudo killall usbmuxd 2>/dev/null | true
-        fi
+        sudo killall usbmuxd 2>/dev/null | true
         exit
     elif [ "$device_major" -eq 7 ] || ([ "$device_major" -eq 8 ] && [ "$device_minor" -lt 3 ]); then
         echo "[*] Restoring activation files via ramdisk is not supported on iOS 7.0-8.2"
         killall iproxy 2>/dev/null | true
-        if [ "$oscheck" = 'Linux' ]; then
-            sudo killall usbmuxd 2>/dev/null | true
-        fi
+        sudo killall usbmuxd 2>/dev/null | true
         exit
     fi
 elif [ "$1" = '--dump-nand' ]; then
@@ -533,9 +361,7 @@ elif [ "$1" = '--dump-nand' ]; then
     "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "dd if=/dev/disk0 bs=64k | gzip -1 -" | dd of=disk0.gz bs=64k
     echo "[*] Done!"
     killall iproxy 2>/dev/null | true
-    if [ "$oscheck" = 'Linux' ]; then
-            sudo killall usbmuxd 2>/dev/null | true
-    fi
+    sudo killall usbmuxd 2>/dev/null | true
     exit
 elif [ "$1" = '--restore-nand' ]; then
     ./sshrd.sh 12.0
@@ -553,9 +379,7 @@ elif [ "$1" = '--restore-nand' ]; then
     dd if=disk0.gz bs=64k | "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "gzip -d | dd of=/dev/disk0 bs=64k"
     echo "[*] Done!"
     killall iproxy 2>/dev/null | true
-    if [ "$oscheck" = 'Linux' ]; then
-            sudo killall usbmuxd 2>/dev/null | true
-    fi
+    sudo killall usbmuxd 2>/dev/null | true
     exit
 elif [ "$1" = '--brute-force' ]; then
     ./sshrd.sh 12.0
@@ -578,9 +402,7 @@ elif [ "$1" = '--brute-force' ]; then
     "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/reboot"
     echo "[*] Now the device should get unlimited passcode attempts"
     killall iproxy 2>/dev/null | true
-    if [ "$oscheck" = 'Linux' ]; then
-            sudo killall usbmuxd 2>/dev/null | true
-    fi
+    sudo killall usbmuxd 2>/dev/null | true
     exit
 elif [ "$1" = '--reset-ssh' ]; then
     if [ "$oscheck" = 'Linux' ]; then
@@ -595,9 +417,7 @@ elif [ "$1" = '--reset-ssh' ]; then
     "$oscheck"/sshpass -p alpine ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/reboot" 
     echo "[*] Device should now show a progress bar and erase all data"
     killall iproxy 2>/dev/null | true
-    if [ "$oscheck" = 'Linux' ]; then
-        sudo killall usbmuxd 2>/dev/null | true
-    fi
+    sudo killall usbmuxd 2>/dev/null | true
     exit
 elif [ "$oscheck" = 'Darwin' ]; then
     if ! (system_profiler SPUSBDataType 2> /dev/null | grep ' Apple Mobile Device (DFU Mode)' >> /dev/null); then
